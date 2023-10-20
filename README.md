@@ -274,16 +274,18 @@ details	STRING	NULLABLE
 
 ```bash
 
-SELECT
-  s.content AS search_content,
-  c.content AS content,
-  ML.DISTANCE(s.text_embedding, c.text_embedding, 'COSINE') AS distance
-FROM
-  provider0526.search_embedding AS s,
-  provider0526.cluster_1_embedding AS c
-ORDER BY
-  distance ASC
-LIMIT 10;
+    SELECT
+        s.content AS search_content,
+        c.content AS content,
+        ML.DISTANCE(s.text_embedding, c.text_embedding, 'COSINE') AS distance
+    FROM
+        provider0526.search_embedding AS s,
+        provider0526.cluster_1_embedding AS c
+    ORDER BY
+    distance ASC
+    LIMIT 10;
 
 ```
+
+ ![](assets/11-search-results.PNG)
 
