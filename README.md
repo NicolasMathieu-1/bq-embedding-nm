@@ -187,4 +187,103 @@ details	STRING	NULLABLE
 
   ![](assets/06-kmeans.PNG)
 
-  
+
+
+# Perform similarity search within clusters
+
+ - Create a table with a single row that contains the search content and its text embedding:
+
+ ```bash
+ 
+ # Command:
+ #CREATE OR REPLACE TABLE semantic_search_tutorial.search_embedding AS (
+ #   SELECT
+ #   *
+ #   FROM
+ #   ML.GENERATE_TEXT_EMBEDDING(
+ #       MODEL `semantic_search_tutorial.embedding_model`,
+ #       (SELECT
+ #       "TREES DOWN NEAR THE INTERSECTION OF HIGHWAY" AS content),
+ #       STRUCT(TRUE AS flatten_json_output))
+ #   );
+
+ CREATE OR REPLACE TABLE provider0526.search_embedding AS (
+    SELECT
+    *
+    FROM
+    ML.GENERATE_TEXT_EMBEDDING(
+        MODEL `provider0526.embedding_model`,
+        (SELECT
+        "Pediatrics who accepts new patient also speaks English and French" AS content),
+        STRUCT(TRUE AS flatten_json_output))
+    );
+ ```
+
+ ![](assets/07-search-criteria-embeddings.PNG)
+
+ - Using the k-means model that you created, determine which cluster the embedded search content belongs to:
+
+ ```bash
+ 
+ SELECT
+        centroid_id,
+        text_embedding
+    FROM
+        ML.PREDICT(
+            MODEL `provider0526.clustering`,
+            (SELECT
+                text_embedding
+            FROM
+                provider0526.search_embedding)
+  );
+
+
+ ```
+
+ The result shows centroid 1.
+
+ ![](assets/08-search-centroid.PNG)
+
+ - In this case, the embedded search content is in the cluster with centroid_id equal to 1. Create a table that contains the content and text embeddings of comments in that cluster:
+
+ ```bash
+
+ CREATE OR REPLACE TABLE provider0526.cluster_1_embedding AS (
+  SELECT
+    *
+  FROM
+    ML.PREDICT(
+      MODEL `provider0526.clustering`,
+      (SELECT
+         text_embedding,
+         content
+       FROM
+         provider0526.goodclinic_embeddings)
+    )
+    WHERE centroid_id = 1
+  );
+ 
+ ```
+  ![](assets/09-cluster-1-centroid-1-embeddings.PNG)
+
+  All cluster 1 values that belongs to centroid 1 available in this table, show below.
+
+  ![](assets/10-centroid-1-cluster-1-values.PNG)
+
+-  Use the ML.DISTANCE function to find semantically similar contents in the same cluster as the search content. Restricting to a single cluster speeds up the semantic search. To improve recall, you could include additional clusters in your search. The following query returns the top 10 contents from the goodclinic data that are most semantically similar to the text "Pediatrics who accepts new patient also speaks English and French":
+
+```bash
+
+SELECT
+  s.content AS search_content,
+  c.content AS content,
+  ML.DISTANCE(s.text_embedding, c.text_embedding, 'COSINE') AS distance
+FROM
+  provider0526.search_embedding AS s,
+  provider0526.cluster_1_embedding AS c
+ORDER BY
+  distance ASC
+LIMIT 10;
+
+```
+
